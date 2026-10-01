@@ -1,5 +1,33 @@
 [
   {
+    "id": "3f997d44-35ed-4b5c-9078-c12680d5673c",
+    "title": "demo",
+    "category": "Sharara",
+    "price": 747,
+    "description": "demonnnnnnnnnnnnnnnnnnn",
+    "fabric": "",
+    "color": "",
+    "work": "",
+    "occasion": "",
+    "size": "",
+    "customization": "",
+    "additionalNotes": "",
+    "status": "available",
+    "slug": "demo",
+    "createdAt": "2026-10-01T14:16:20.647Z",
+    "updatedAt": "2026-10-01T14:16:20.648Z",
+    "media": [
+      {
+        "id": "d2db3ee7-9392-4026-9837-7be461b5df1a",
+        "fileUrl": "/uploads/244c4a921e1e6c9cbd2517b132b3b5f7",
+        "storagePath": "listings/uploads/244c4a921e1e6c9cbd2517b132b3b5f7",
+        "mediaType": "image",
+        "sortOrder": 0,
+        "createdAt": "2026-10-01T14:16:20.648Z"
+      }
+    ]
+  },
+  {
     "id": "0be1a6c0-4e57-48c3-a7ce-2c5d58f10711",
     "title": "Noor Maroon Bridal Lehenga",
     "slug": "noor-maroon-bridal-lehenga",

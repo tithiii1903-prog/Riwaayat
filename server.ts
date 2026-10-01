@@ -96,10 +96,15 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => { const
 const app = express();
 app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, frameguard: false }));
-const allowedOrigins = (process.env.FRONTEND_URL || '').split(',').map((origin) => origin.trim()).filter(Boolean);
+const allowedOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+    const cleanOrigin = origin ? origin.replace(/\/+$/, '') : '';
+    if (!origin || allowedOrigins.includes(cleanOrigin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
       return callback(null, true);
     }
     if (!isPreviewOrProduction && allowedOrigins.length === 0) {
