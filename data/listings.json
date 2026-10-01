@@ -1,0 +1,141 @@
+[
+  {
+    "id": "0be1a6c0-4e57-48c3-a7ce-2c5d58f10711",
+    "title": "Noor Maroon Bridal Lehenga",
+    "slug": "noor-maroon-bridal-lehenga",
+    "category": "Bridal Wear",
+    "price": 24999,
+    "description": "A deep maroon bridal set layered with zardozi-inspired embroidery, quiet shimmer, and a sweeping silhouette made for the evening light.",
+    "fabric": "Silk blend",
+    "color": "Deep maroon",
+    "work": "Zari, sequins & hand-finish detailing",
+    "occasion": "Bridal / Wedding",
+    "size": "XS–XL",
+    "customization": "Blouse and length adjustments available",
+    "additionalNotes": "Includes lehenga, blouse and dupatta.",
+    "status": "available",
+    "createdAt": "2026-09-28T10:00:00.000Z",
+    "updatedAt": "2026-09-28T10:00:00.000Z",
+    "media": [
+      {
+        "id": "m-1",
+        "fileUrl": "/assets/maroon-lehenga.jpg",
+        "storagePath": "/assets/maroon-lehenga.jpg",
+        "mediaType": "image",
+        "sortOrder": 0,
+        "createdAt": "2026-10-01T12:18:56.467Z"
+      },
+      {
+        "id": "m-2",
+        "fileUrl": "/assets/gold-embroidery.jpg",
+        "storagePath": "/assets/gold-embroidery.jpg",
+        "mediaType": "image",
+        "sortOrder": 1,
+        "createdAt": "2026-10-01T12:18:56.467Z"
+      },
+      {
+        "id": "m-3",
+        "fileUrl": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+        "storagePath": "remote/flower.mp4",
+        "mediaType": "video",
+        "sortOrder": 2,
+        "createdAt": "2026-10-01T12:18:56.468Z"
+      }
+    ]
+  },
+  {
+    "id": "2a0e4db6-2db1-4d68-a4b1-3f6fb2f2af113",
+    "title": "Gulab Ivory Saree",
+    "slug": "gulab-ivory-saree",
+    "category": "Saree",
+    "price": 12990,
+    "description": "An ivory drape with a wine border and delicate floral work—graceful enough for an intimate gathering, luminous enough for a celebration.",
+    "fabric": "Georgette",
+    "color": "Ivory & wine",
+    "work": "Floral border embroidery",
+    "occasion": "Festive / Evening",
+    "size": "Free size",
+    "status": "available",
+    "createdAt": "2026-09-24T10:00:00.000Z",
+    "updatedAt": "2026-09-24T10:00:00.000Z",
+    "media": [
+      {
+        "id": "m-4",
+        "fileUrl": "/assets/cream-saree.jpg",
+        "storagePath": "/assets/cream-saree.jpg",
+        "mediaType": "image",
+        "sortOrder": 0,
+        "createdAt": "2026-10-01T12:18:56.468Z"
+      },
+      {
+        "id": "m-5",
+        "fileUrl": "/assets/embroidery-detail.jpg",
+        "storagePath": "/assets/embroidery-detail.jpg",
+        "mediaType": "image",
+        "sortOrder": 1,
+        "createdAt": "2026-10-01T12:18:56.468Z"
+      }
+    ]
+  },
+  {
+    "id": "d77a8927-7657-4666-9c35-f285d88f4a22",
+    "title": "Aabha Copper Silk Saree",
+    "slug": "aabha-copper-silk-saree",
+    "category": "Saree",
+    "price": 8990,
+    "description": "A warm copper silk with an easy fall and a softly gleaming pallu, chosen for its flattering drape and heirloom warmth.",
+    "fabric": "Art silk",
+    "color": "Copper brown",
+    "work": "Woven border",
+    "occasion": "Festive / Occasion",
+    "size": "Free size",
+    "status": "out_of_stock",
+    "createdAt": "2026-09-19T10:00:00.000Z",
+    "updatedAt": "2026-09-19T10:00:00.000Z",
+    "media": [
+      {
+        "id": "m-6",
+        "fileUrl": "/assets/copper-saree.jpg",
+        "storagePath": "/assets/copper-saree.jpg",
+        "mediaType": "image",
+        "sortOrder": 0,
+        "createdAt": "2026-10-01T12:18:56.468Z"
+      }
+    ]
+  },
+  {
+    "id": "e56a61af-9a9f-4b5d-976d-71e2db12b532",
+    "title": "Meher Embroidered Sharara",
+    "slug": "meher-embroidered-sharara",
+    "category": "Sharara",
+    "price": 18990,
+    "description": "A champagne-and-maroon sharara set composed around soft movement, ornate cuffs, and an embroidered dupatta that catches the light.",
+    "fabric": "Organza & silk blend",
+    "color": "Champagne & maroon",
+    "work": "Threadwork and cutdana",
+    "occasion": "Mehendi / Festive",
+    "size": "S–XL",
+    "customization": "Color pairing available on request",
+    "status": "sold",
+    "createdAt": "2026-09-14T10:00:00.000Z",
+    "updatedAt": "2026-09-14T10:00:00.000Z",
+    "media": [
+      {
+        "id": "m-7",
+        "fileUrl": "/assets/maroon-lehenga.jpg",
+        "storagePath": "/assets/maroon-lehenga.jpg",
+        "mediaType": "image",
+        "sortOrder": 0,
+        "createdAt": "2026-10-01T12:18:56.468Z"
+      },
+      {
+        "id": "m-8",
+        "fileUrl": "/assets/gold-embroidery.jpg",
+        "storagePath": "/assets/gold-embroidery.jpg",
+        "mediaType": "image",
+        "sortOrder": 1,
+        "createdAt": "2026-10-01T12:18:56.468Z"
+      }
+    ]
+  }
+]
