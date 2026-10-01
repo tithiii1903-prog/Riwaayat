@@ -2,7 +2,7 @@
 
 Riwaayat Closet is a premium, view-only catalogue for Indian ethnic wear: **Where Tradition Meets Elegance**. Customers can browse, search, filter, sort, open an article, view its media, price, details and availability. There is no customer account, cart, checkout, payment, order or review workflow.
 
-#Live url
+# Live url
 
 https://riwaayat-vert.vercel.app/
 
