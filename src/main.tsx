@@ -1,8 +1,9 @@
 import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
-import { request } from './services/api';
+import { request, setStoredToken } from './services/api';
 import { getListing, getListings } from './services/listings';
+import { login, logout, getSession } from './services/auth';
 
 type Status = 'available' | 'out_of_stock' | 'sold';
 type Media = { id: string; fileUrl: string; storagePath: string; mediaType: 'image' | 'video'; sortOrder: number };
@@ -54,13 +55,463 @@ function DetailPage({ slug }: { slug: string }) { const [listing, setListing] = 
 
 function AboutPage() { return <Shell><main className="about-page"><section className="about-hero"><SectionLabel number="About the closet">The Riwaayat note</SectionLabel><h1>Rooted in <i>craft.</i><br />Made for now.</h1><p>Riwaayat is a small, considered edit of Indian occasion wear—pieces chosen for their generous colour, thoughtful detail, and the way they make a moment feel more like your own.</p></section><section className="about-grid"><img src="/assets/gold-embroidery.jpg" alt="Gold embroidery on maroon fabric" /><div><SectionLabel number="01">A point of view</SectionLabel><h2>Not a shop floor.<br /><i>A point of view.</i></h2><p>We are a catalogue, not a checkout. Each article is shown as it is currently available, with its story, price, details, and status kept close to the source.</p></div><div><SectionLabel number="02">For your moments</SectionLabel><h2>For the <i>beautifully</i><br />unplanned.</h2><p>From the first invitation to the last dance, we look for silhouettes that feel special without feeling overworked—bridal maroons, soft ivories, warm metallics, and the quiet work of a good drape.</p></div><img src="/assets/cream-saree.jpg" alt="Ivory saree with maroon border" /></section><section className="about-cta"><span className="eyebrow">Ready when you are</span><h2>Find the piece<br /><i>that stays with you.</i></h2><Button onClick={() => go('/collection')}>Explore collection</Button></section></main></Shell>; }
 
-function AdminLogin() { const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const submit = async (event: FormEvent) => { event.preventDefault(); setLoading(true); setError(''); try { await request('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }); go('/admin'); } catch (e) { setError(e instanceof Error ? e.message : 'Login failed.'); } finally { setLoading(false); } }; return <div className="admin-auth"><div className="admin-auth-visual"><img src="/assets/maroon-lehenga.jpg" alt="Maroon embroidered lehenga" /><div><Brand dark /><p>Where tradition<br /><i>meets elegance.</i></p></div></div><div className="admin-auth-form"><button className="back-link" onClick={() => go('/')}>← Return to catalogue</button><div className="auth-card"><SectionLabel number="Private access">Riwaayat Closet</SectionLabel><h1>Admin <i>portal.</i></h1><p>Manage the articles currently being considered for the public edit.</p><form onSubmit={submit}><label>Admin ID<input required value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" placeholder="Enter your admin ID" /></label><label>Password<input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" placeholder="Enter your password" /></label>{error && <div className="form-error">{error}</div>}<Button type="submit">{loading ? 'Signing in…' : 'Login'}</Button></form><small className="auth-footnote">One secure account · catalogue access only</small></div></div></div>; }
-function AdminFrame({ children, active = 'dashboard' }: { children: React.ReactNode; active?: string }) { const [username, setUsername] = useState(''); const [ready, setReady] = useState(false); useEffect(() => { request<{ data: { username: string } }>('/api/admin/me').then((payload) => { setUsername(payload.data.username); setReady(true); }).catch(() => go('/admin/login')); }, []); if (!ready) return <div className="admin-loading"><LogoMark /><p>Opening your private edit…</p></div>; const logout = async () => { await request('/api/admin/logout', { method: 'POST' }); go('/admin/login'); }; return <div className="admin-shell"><aside className="admin-sidebar"><Brand /><div className="admin-user"><span className="avatar">{username.slice(0, 1).toUpperCase()}</span><div><strong>{username}</strong><small>Administrator</small></div></div><nav><button className={active === 'dashboard' ? 'active' : ''} onClick={() => go('/admin')}>Overview <span>↗</span></button><button className={active === 'listings' ? 'active' : ''} onClick={() => go('/admin/listings')}>Manage listings <span>↗</span></button><button className={active === 'new' ? 'active' : ''} onClick={() => go('/admin/listings/new')}>Add new article <span>↗</span></button></nav><div className="admin-sidebar-bottom"><button onClick={() => go('/')}>View public site ↗</button><button onClick={logout}>Log out</button></div></aside><div className="admin-main"><header className="admin-header"><div><span className="eyebrow">Riwaayat Closet / Private edit</span><span className="admin-breadcrumb">{active === 'dashboard' ? 'Overview' : active === 'new' ? 'Add article' : 'Manage listings'}</span></div><button className="mobile-admin-site" onClick={() => go('/')}>View site ↗</button></header>{children}</div></div>; }
-function DashboardPage() { const [dashboard, setDashboard] = useState<{ total: number; available: number; outOfStock: number; sold: number; recent: Listing[] } | null>(null); useEffect(() => { request<{ data: typeof dashboard }>('/api/admin/dashboard').then((payload) => setDashboard(payload.data)); }, []); if (!dashboard) return <AdminFrame><div className="admin-loading"><LogoMark /><p>Gathering the latest edit…</p></div></AdminFrame>; return <AdminFrame><main className="admin-content"><div className="admin-title-row"><div><SectionLabel number="01">Good morning</SectionLabel><h1>Your <i>overview.</i></h1></div><Button onClick={() => go('/admin/listings/new')}>Add listing</Button></div><div className="stat-grid"><div><span>Total listings</span><strong>{dashboard.total}</strong><small>In the current edit</small></div><div><span>Available</span><strong>{dashboard.available}</strong><small>Ready to enquire</small></div><div><span>Out of stock</span><strong>{dashboard.outOfStock}</strong><small>Awaiting an update</small></div><div><span>Sold</span><strong>{dashboard.sold}</strong><small>Found their home</small></div></div><section className="admin-panel"><div className="panel-heading"><div><span className="eyebrow">Recently added</span><h2>The latest <i>articles.</i></h2></div><button className="text-link" onClick={() => go('/admin/listings')}>Manage all ↗</button></div><div className="recent-list">{dashboard.recent.map((item) => <button key={item.id} onClick={() => go(`/admin/listings/${item.id}/edit`)}><img src={item.media[0]?.fileUrl} alt="" /><span><strong>{item.title}</strong><small>{item.category} · {formatDate(item.createdAt)}</small></span><StatusBadge status={item.status} /><span className="row-arrow">↗</span></button>)}</div></section><div className="admin-callout"><div><span className="eyebrow">A quiet reminder</span><h2>Every article<br /><i>has a story.</i></h2></div><p>Keep the public edit honest and current. A status change here becomes visible to every visitor immediately.</p></div></main></AdminFrame>; }
-function ConfirmModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => void }) { return <div className="modal-backdrop"><div className="confirm-modal"><button className="modal-close" onClick={onClose}>×</button><span className="eyebrow">Please confirm</span><h2>Delete <i>listing?</i></h2><p>This will permanently remove this article from the catalogue.</p><div><button className="button button-outline" onClick={onClose}>Cancel</button><button className="button button-danger" onClick={onConfirm}>Delete <span>↗</span></button></div></div></div>; }
-function AdminListingsPage() { const [listings, setListings] = useState<Listing[]>([]); const [selected, setSelected] = useState<Listing | null>(null); const [message, setMessage] = useState(''); const load = () => request<{ data: Listing[] }>('/api/admin/listings').then((payload) => setListings(payload.data)); useEffect(() => { void load(); }, []); const changeStatus = async (listing: Listing, status: Status) => { await request(`/api/admin/listings/${listing.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }); setMessage('Status updated.'); load(); }; const deleteListing = async () => { if (!selected) return; await request(`/api/admin/listings/${selected.id}`, { method: 'DELETE' }); setSelected(null); setMessage('Listing removed from the catalogue.'); load(); }; return <AdminFrame active="listings"><main className="admin-content"><div className="admin-title-row"><div><SectionLabel number="02">Catalogue management</SectionLabel><h1>Manage <i>listings.</i></h1></div><Button onClick={() => go('/admin/listings/new')}>Add listing</Button></div>{message && <div className="toast">{message}<button onClick={() => setMessage('')}>×</button></div>}<section className="admin-table-panel"><div className="admin-table-heading"><span>{listings.length} articles in the current edit</span><span>Updated live</span></div><div className="admin-table">{listings.map((item) => <div className="admin-row" key={item.id}><img src={item.media[0]?.fileUrl} alt="" /><div className="admin-row-title"><strong>{item.title}</strong><small>{item.category} · Added {formatDate(item.createdAt)}</small></div><strong className="admin-row-price">{formatPrice(item.price)}</strong><select value={item.status} onChange={(e) => changeStatus(item, e.target.value as Status)}><option value="available">Available</option><option value="out_of_stock">Out of stock</option><option value="sold">Sold</option></select><button className="row-action" onClick={() => go(`/admin/listings/${item.id}/edit`)}>Edit ↗</button><button className="row-delete" onClick={() => setSelected(item)} aria-label={`Delete ${item.title}`}>×</button></div>)}</div></section></main>{selected && <ConfirmModal onClose={() => setSelected(null)} onConfirm={deleteListing} />}</AdminFrame>; }
-function ListingEditorPage({ id }: { id?: string }) { const editing = Boolean(id); const [form, setForm] = useState<Partial<Listing>>({ title: '', category: 'Lehenga', price: 0, description: '', status: 'available', fabric: '', color: '', work: '', occasion: '', size: '', customization: '', additionalNotes: '' }); const [existingMedia, setExistingMedia] = useState<Media[]>([]); const [files, setFiles] = useState<File[]>([]); const [error, setError] = useState(''); const [saving, setSaving] = useState(false); useEffect(() => { if (id) request<{ data: Listing }>(`/api/admin/listings/${id}`).then((payload) => { setForm(payload.data); setExistingMedia(payload.data.media); }); }, [id]); const update = (key: string, value: string | number) => setForm((current) => ({ ...current, [key]: value })); const submit = async (event: FormEvent) => { event.preventDefault(); setSaving(true); setError(''); const body = new FormData(); Object.entries(form).forEach(([key, value]) => { if (value !== undefined && key !== 'id' && key !== 'slug' && key !== 'media' && key !== 'createdAt' && key !== 'updatedAt') body.append(key, String(value ?? '')); }); files.forEach((file) => body.append('media', file)); try { await request(editing ? `/api/admin/listings/${id}` : '/api/admin/listings', { method: editing ? 'PATCH' : 'POST', body }); go('/admin/listings'); } catch (e) { setError(e instanceof Error ? e.message : 'Could not save listing.'); } finally { setSaving(false); } }; return <AdminFrame active={editing ? 'listings' : 'new'}><main className="admin-content editor-content"><button className="back-link" onClick={() => go('/admin/listings')}>← Back to listings</button><div className="editor-heading"><SectionLabel number={editing ? '03' : '03'}>{editing ? 'Refine an article' : 'Add to the edit'}</SectionLabel><h1>{editing ? <>Edit <i>listing.</i></> : <>New <i>listing.</i></>}</h1><p>{editing ? 'Keep the article details precise and current for every visitor.' : 'Add an article with the details your customers need to make an informed enquiry.'}</p></div><form className="listing-form" onSubmit={submit}><section><div className="form-section-heading"><span className="eyebrow">01 / Essential details</span><p>Required fields keep the public catalogue clear.</p></div><div className="form-grid"><label className="full">Article name<input required value={form.title || ''} onChange={(e) => update('title', e.target.value)} placeholder="e.g. Noor Maroon Bridal Lehenga" /></label><label>Category<select required value={form.category || ''} onChange={(e) => update('category', e.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select></label><label>Price (INR)<input required type="number" min="1" value={form.price || ''} onChange={(e) => update('price', Number(e.target.value))} placeholder="24999" /></label><label className="full">Description<textarea required minLength={10} value={form.description || ''} onChange={(e) => update('description', e.target.value)} placeholder="Describe the silhouette, craft, and feeling of the piece." rows={5} /></label></div></section><section><div className="form-section-heading"><span className="eyebrow">02 / The details</span><p>Optional, but useful for a considered enquiry.</p></div><div className="form-grid"><label>Fabric<input value={form.fabric || ''} onChange={(e) => update('fabric', e.target.value)} placeholder="Silk blend" /></label><label>Colour<input value={form.color || ''} onChange={(e) => update('color', e.target.value)} placeholder="Deep maroon" /></label><label>Work / embroidery<input value={form.work || ''} onChange={(e) => update('work', e.target.value)} placeholder="Zari and sequins" /></label><label>Occasion<input value={form.occasion || ''} onChange={(e) => update('occasion', e.target.value)} placeholder="Wedding / festive" /></label><label>Size<input value={form.size || ''} onChange={(e) => update('size', e.target.value)} placeholder="XS–XL" /></label><label>Customization<input value={form.customization || ''} onChange={(e) => update('customization', e.target.value)} placeholder="Available on request" /></label><label className="full">Additional notes<textarea value={form.additionalNotes || ''} onChange={(e) => update('additionalNotes', e.target.value)} rows={3} placeholder="What else should the customer know?" /></label></div></section><section><div className="form-section-heading"><span className="eyebrow">03 / Media & status</span><p>JPG, PNG, WEBP up to 8MB; MP4, WEBM, MOV up to 40MB.</p></div><label className="dropzone"><input type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" onChange={(e) => setFiles(Array.from(e.target.files || []))} /><span className="upload-icon">＋</span><strong>Drop images or videos here</strong><small>or choose files from your device</small>{files.length > 0 && <em>{files.length} new file{files.length > 1 ? 's' : ''} selected</em>}</label>{existingMedia.length > 0 && <div className="existing-media"><span className="eyebrow">Current media</span><div>{existingMedia.map((media) => media.mediaType === 'image' ? <img key={media.id} src={media.fileUrl} alt="" /> : <span key={media.id} className="existing-video">Video</span>)}</div></div>}<label className="status-select">Availability<select value={form.status || 'available'} onChange={(e) => update('status', e.target.value)}><option value="available">Available</option><option value="out_of_stock">Out of stock</option><option value="sold">Sold</option></select></label></section>{error && <div className="form-error">{error}</div>}<div className="form-actions"><button className="button button-outline" type="button" onClick={() => go('/admin/listings')}>Cancel</button><Button type="submit">{saving ? 'Saving…' : editing ? 'Save changes' : 'Save listing'}</Button></div></form></main></AdminFrame>; }
+function AdminLogin() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-function App() { const path = usePath(); useEffect(() => { if (path === '/') setPageMeta('Riwaayat Closet | Where Tradition Meets Elegance', 'A curated catalogue of Indian ethnic wear where tradition meets elegance.'); else if (path === '/collection') setPageMeta('The Collection | Riwaayat Closet', 'Explore a considered edit of Indian occasion wear, selected for craft, colour, and quiet splendour.'); else if (path === '/about') setPageMeta('About the Closet | Riwaayat Closet', 'Meet Riwaayat Closet, a considered catalogue of Indian occasion wear.'); }, [path]); if (path === '/admin/login') return <AdminLogin />; if (path === '/admin' || path === '/admin/') return <DashboardPage />; if (path === '/admin/listings') return <AdminListingsPage />; if (path === '/admin/listings/new') return <ListingEditorPage />; if (path.startsWith('/admin/listings/') && path.endsWith('/edit')) return <ListingEditorPage id={path.split('/')[3]} />; if (path === '/collection') return <CollectionPage />; if (path.startsWith('/collection/')) return <DetailPage slug={path.split('/')[2]} />; if (path === '/about') return <AboutPage />; return <HomePage />; }
+  useEffect(() => {
+    getSession<{ data: { username: string } }>()
+      .then(() => go('/admin'))
+      .catch(() => {});
+  }, []);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      await login(username, password);
+      go('/admin');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Login failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="admin-auth">
+      <div className="admin-auth-visual">
+        <img src="/assets/maroon-lehenga.jpg" alt="Maroon embroidered lehenga" />
+        <div>
+          <Brand dark />
+          <p>Where tradition<br /><i>meets elegance.</i></p>
+        </div>
+      </div>
+      <div className="admin-auth-form">
+        <button className="back-link" onClick={() => go('/')}>← Return to catalogue</button>
+        <div className="auth-card">
+          <SectionLabel number="Private access">Riwaayat Closet</SectionLabel>
+          <h1>Admin <i>portal.</i></h1>
+          <p>Manage the articles currently being considered for the public edit.</p>
+          <form onSubmit={submit}>
+            <label>Admin ID
+              <input required value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" placeholder="Enter your admin ID" />
+            </label>
+            <label>Password
+              <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" placeholder="Enter your password" />
+            </label>
+            {error && <div className="form-error">{error}</div>}
+            <Button type="submit">{loading ? 'Signing in…' : 'Login'}</Button>
+          </form>
+          <small className="auth-footnote">One secure account · catalogue access only</small>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminFrame({ children, active = 'dashboard' }: { children: React.ReactNode; active?: string }) {
+  const [username, setUsername] = useState('');
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getSession<{ data: { username: string } }>()
+      .then((payload) => {
+        if (mounted) {
+          setUsername(payload.data.username);
+          setReady(true);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setStoredToken(null);
+          go('/admin/login');
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!ready) {
+    return (
+      <div className="admin-loading">
+        <LogoMark />
+        <p>Opening your private edit…</p>
+      </div>
+    );
+  }
+
+  const handleLogout = async () => {
+    await logout();
+    go('/admin/login');
+  };
+
+  return (
+    <div className="admin-shell">
+      <aside className="admin-sidebar">
+        <Brand />
+        <div className="admin-user">
+          <span className="avatar">{username.slice(0, 1).toUpperCase()}</span>
+          <div>
+            <strong>{username}</strong>
+            <small>Administrator</small>
+          </div>
+        </div>
+        <nav>
+          <button className={active === 'dashboard' ? 'active' : ''} onClick={() => go('/admin')}>Overview <span>↗</span></button>
+          <button className={active === 'listings' ? 'active' : ''} onClick={() => go('/admin/listings')}>Manage listings <span>↗</span></button>
+          <button className={active === 'new' ? 'active' : ''} onClick={() => go('/admin/listings/new')}>Add new article <span>↗</span></button>
+        </nav>
+        <div className="admin-sidebar-bottom">
+          <button onClick={() => go('/')}>View public site ↗</button>
+          <button onClick={handleLogout}>Log out</button>
+        </div>
+      </aside>
+      <div className="admin-main">
+        <header className="admin-header">
+          <div>
+            <span className="eyebrow">Riwaayat Closet / Private edit</span>
+            <span className="admin-breadcrumb">{active === 'dashboard' ? 'Overview' : active === 'new' ? 'Add article' : 'Manage listings'}</span>
+          </div>
+          <button className="mobile-admin-site" onClick={() => go('/')}>View site ↗</button>
+        </header>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DashboardPage() {
+  const [dashboard, setDashboard] = useState<{ total: number; available: number; outOfStock: number; sold: number; recent: Listing[] } | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    request<{ data: typeof dashboard }>('/api/admin/dashboard')
+      .then((payload) => {
+        if (mounted) setDashboard(payload.data);
+      })
+      .catch((err) => {
+        if (mounted) {
+          console.warn('Dashboard load notice:', err.message);
+          if (err.message?.includes('Authentication required') || err.message?.includes('401')) {
+            setStoredToken(null);
+            go('/admin/login');
+          }
+        }
+      });
+    return () => { mounted = false; };
+  }, []);
+
+  if (!dashboard) {
+    return (
+      <div className="admin-loading">
+        <LogoMark />
+        <p>Gathering the latest edit…</p>
+      </div>
+    );
+  }
+
+  return (
+    <main className="admin-content">
+      <div className="admin-title-row">
+        <div><SectionLabel number="01">Good morning</SectionLabel><h1>Your <i>overview.</i></h1></div>
+        <Button onClick={() => go('/admin/listings/new')}>Add listing</Button>
+      </div>
+      <div className="stat-grid">
+        <div><span>Total listings</span><strong>{dashboard.total}</strong><small>In the current edit</small></div>
+        <div><span>Available</span><strong>{dashboard.available}</strong><small>Ready to enquire</small></div>
+        <div><span>Out of stock</span><strong>{dashboard.outOfStock}</strong><small>Awaiting an update</small></div>
+        <div><span>Sold</span><strong>{dashboard.sold}</strong><small>Found their home</small></div>
+      </div>
+      <section className="admin-panel">
+        <div className="panel-heading">
+          <div><span className="eyebrow">Recently added</span><h2>The latest <i>articles.</i></h2></div>
+          <button className="text-link" onClick={() => go('/admin/listings')}>Manage all ↗</button>
+        </div>
+        <div className="recent-list">
+          {dashboard.recent.map((item) => (
+            <button key={item.id} onClick={() => go(`/admin/listings/${item.id}/edit`)}>
+              <img src={item.media[0]?.fileUrl} alt="" />
+              <span><strong>{item.title}</strong><small>{item.category} · {formatDate(item.createdAt)}</small></span>
+              <StatusBadge status={item.status} />
+              <span className="row-arrow">↗</span>
+            </button>
+          ))}
+        </div>
+      </section>
+      <div className="admin-callout">
+        <div><span className="eyebrow">A quiet reminder</span><h2>Every article<br /><i>has a story.</i></h2></div>
+        <p>Keep the public edit honest and current. A status change here becomes visible to every visitor immediately.</p>
+      </div>
+    </main>
+  );
+}
+
+function ConfirmModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => void }) {
+  return (
+    <div className="modal-backdrop">
+      <div className="confirm-modal">
+        <button className="modal-close" onClick={onClose}>×</button>
+        <span className="eyebrow">Please confirm</span>
+        <h2>Delete <i>listing?</i></h2>
+        <p>This will permanently remove this article from the catalogue.</p>
+        <div>
+          <button className="button button-outline" onClick={onClose}>Cancel</button>
+          <button className="button button-danger" onClick={onConfirm}>Delete <span>↗</span></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminListingsPage() {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [selected, setSelected] = useState<Listing | null>(null);
+  const [message, setMessage] = useState('');
+
+  const load = () =>
+    request<{ data: Listing[] }>('/api/admin/listings')
+      .then((payload) => setListings(payload.data))
+      .catch((err) => {
+        console.warn('Listings load notice:', err.message);
+        if (err.message?.includes('Authentication required') || err.message?.includes('401')) {
+          setStoredToken(null);
+          go('/admin/login');
+        }
+      });
+
+  useEffect(() => { void load(); }, []);
+
+  const changeStatus = async (listing: Listing, status: Status) => {
+    try {
+      await request(`/api/admin/listings/${listing.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      setMessage('Status updated.');
+      load();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteListing = async () => {
+    if (!selected) return;
+    try {
+      await request(`/api/admin/listings/${selected.id}`, { method: 'DELETE' });
+      setSelected(null);
+      setMessage('Listing removed from the catalogue.');
+      load();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    <>
+      <main className="admin-content">
+        <div className="admin-title-row">
+          <div><SectionLabel number="02">Catalogue management</SectionLabel><h1>Manage <i>listings.</i></h1></div>
+          <Button onClick={() => go('/admin/listings/new')}>Add listing</Button>
+        </div>
+        {message && <div className="toast">{message}<button onClick={() => setMessage('')}>×</button></div>}
+        <section className="admin-table-panel">
+          <div className="admin-table-heading">
+            <span>{listings.length} articles in the current edit</span>
+            <span>Updated live</span>
+          </div>
+          <div className="admin-table">
+            {listings.map((item) => (
+              <div className="admin-row" key={item.id}>
+                <img src={item.media[0]?.fileUrl} alt="" />
+                <div className="admin-row-title">
+                  <strong>{item.title}</strong>
+                  <small>{item.category} · Added {formatDate(item.createdAt)}</small>
+                </div>
+                <strong className="admin-row-price">{formatPrice(item.price)}</strong>
+                <select value={item.status} onChange={(e) => changeStatus(item, e.target.value as Status)}>
+                  <option value="available">Available</option>
+                  <option value="out_of_stock">Out of stock</option>
+                  <option value="sold">Sold</option>
+                </select>
+                <button className="row-action" onClick={() => go(`/admin/listings/${item.id}/edit`)}>Edit ↗</button>
+                <button className="row-delete" onClick={() => setSelected(item)} aria-label={`Delete ${item.title}`}>×</button>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+      {selected && <ConfirmModal onClose={() => setSelected(null)} onConfirm={deleteListing} />}
+    </>
+  );
+}
+
+function ListingEditorPage({ id }: { id?: string }) {
+  const editing = Boolean(id);
+  const [form, setForm] = useState<Partial<Listing>>({
+    title: '', category: 'Lehenga', price: 0, description: '', status: 'available',
+    fabric: '', color: '', work: '', occasion: '', size: '', customization: '', additionalNotes: ''
+  });
+  const [existingMedia, setExistingMedia] = useState<Media[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      request<{ data: Listing }>(`/api/admin/listings/${id}`)
+        .then((payload) => {
+          setForm(payload.data);
+          setExistingMedia(payload.data.media);
+        })
+        .catch((err) => {
+          console.warn('Listing fetch notice:', err.message);
+          setError(err.message);
+          if (err.message?.includes('Authentication required') || err.message?.includes('401')) {
+            setStoredToken(null);
+            go('/admin/login');
+          }
+        });
+    }
+  }, [id]);
+
+  const update = (key: string, value: string | number) => setForm((current) => ({ ...current, [key]: value }));
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    const body = new FormData();
+    Object.entries(form).forEach(([key, value]) => {
+      if (value !== undefined && key !== 'id' && key !== 'slug' && key !== 'media' && key !== 'createdAt' && key !== 'updatedAt') {
+        body.append(key, String(value ?? ''));
+      }
+    });
+    files.forEach((file) => body.append('media', file));
+    try {
+      await request(editing ? `/api/admin/listings/${id}` : '/api/admin/listings', {
+        method: editing ? 'PATCH' : 'POST',
+        body
+      });
+      go('/admin/listings');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save listing.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <main className="admin-content editor-content">
+      <button className="back-link" onClick={() => go('/admin/listings')}>← Back to listings</button>
+      <div className="editor-heading">
+        <SectionLabel number="03">{editing ? 'Refine an article' : 'Add to the edit'}</SectionLabel>
+        <h1>{editing ? <>Edit <i>listing.</i></> : <>New <i>listing.</i></>}</h1>
+        <p>{editing ? 'Keep the article details precise and current for every visitor.' : 'Add an article with the details your customers need to make an informed enquiry.'}</p>
+      </div>
+      <form className="listing-form" onSubmit={submit}>
+        <section>
+          <div className="form-section-heading">
+            <span className="eyebrow">01 / Essential details</span>
+            <p>Required fields keep the public catalogue clear.</p>
+          </div>
+          <div className="form-grid">
+            <label className="full">Article name
+              <input required value={form.title || ''} onChange={(e) => update('title', e.target.value)} placeholder="e.g. Noor Maroon Bridal Lehenga" />
+            </label>
+            <label>Category
+              <select required value={form.category || ''} onChange={(e) => update('category', e.target.value)}>
+                {categories.map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>Price (INR)
+              <input required type="number" min="1" value={form.price || ''} onChange={(e) => update('price', Number(e.target.value))} placeholder="24999" />
+            </label>
+            <label className="full">Description
+              <textarea required minLength={10} value={form.description || ''} onChange={(e) => update('description', e.target.value)} placeholder="Describe the silhouette, craft, and feeling of the piece." rows={5} />
+            </label>
+          </div>
+        </section>
+        <section>
+          <div className="form-section-heading">
+            <span className="eyebrow">02 / The details</span>
+            <p>Optional, but useful for a considered enquiry.</p>
+          </div>
+          <div className="form-grid">
+            <label>Fabric<input value={form.fabric || ''} onChange={(e) => update('fabric', e.target.value)} placeholder="Silk blend" /></label>
+            <label>Colour<input value={form.color || ''} onChange={(e) => update('color', e.target.value)} placeholder="Deep maroon" /></label>
+            <label>Work / embroidery<input value={form.work || ''} onChange={(e) => update('work', e.target.value)} placeholder="Zari and sequins" /></label>
+            <label>Occasion<input value={form.occasion || ''} onChange={(e) => update('occasion', e.target.value)} placeholder="Wedding / festive" /></label>
+            <label>Size<input value={form.size || ''} onChange={(e) => update('size', e.target.value)} placeholder="XS–XL" /></label>
+            <label>Customization<input value={form.customization || ''} onChange={(e) => update('customization', e.target.value)} placeholder="Available on request" /></label>
+            <label className="full">Additional notes
+              <textarea value={form.additionalNotes || ''} onChange={(e) => update('additionalNotes', e.target.value)} rows={3} placeholder="What else should the customer know?" />
+            </label>
+          </div>
+        </section>
+        <section>
+          <div className="form-section-heading">
+            <span className="eyebrow">03 / Media & status</span>
+            <p>JPG, PNG, WEBP up to 8MB; MP4, WEBM, MOV up to 40MB.</p>
+          </div>
+          <label className="dropzone">
+            <input type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" onChange={(e) => setFiles(Array.from(e.target.files || []))} />
+            <span className="upload-icon">＋</span>
+            <strong>Drop images or videos here</strong>
+            <small>or choose files from your device</small>
+            {files.length > 0 && <em>{files.length} new file{files.length > 1 ? 's' : ''} selected</em>}
+          </label>
+          {existingMedia.length > 0 && (
+            <div className="existing-media">
+              <span className="eyebrow">Current media</span>
+              <div>
+                {existingMedia.map((media) =>
+                  media.mediaType === 'image' ? <img key={media.id} src={media.fileUrl} alt="" /> : <span key={media.id} className="existing-video">Video</span>
+                )}
+              </div>
+            </div>
+          )}
+          <label className="status-select">Availability
+            <select value={form.status || 'available'} onChange={(e) => update('status', e.target.value)}>
+              <option value="available">Available</option>
+              <option value="out_of_stock">Out of stock</option>
+              <option value="sold">Sold</option>
+            </select>
+          </label>
+        </section>
+        {error && <div className="form-error">{error}</div>}
+        <div className="form-actions">
+          <button className="button button-outline" type="button" onClick={() => go('/admin/listings')}>Cancel</button>
+          <Button type="submit">{saving ? 'Saving…' : editing ? 'Save changes' : 'Save listing'}</Button>
+        </div>
+      </form>
+    </main>
+  );
+}
+
+function App() {
+  const path = usePath();
+  useEffect(() => {
+    if (path === '/') setPageMeta('Riwaayat Closet | Where Tradition Meets Elegance', 'A curated catalogue of Indian ethnic wear where tradition meets elegance.');
+    else if (path === '/collection') setPageMeta('The Collection | Riwaayat Closet', 'Explore a considered edit of Indian occasion wear, selected for craft, colour, and quiet splendour.');
+    else if (path === '/about') setPageMeta('About the Closet | Riwaayat Closet', 'Meet Riwaayat Closet, a considered catalogue of Indian occasion wear.');
+  }, [path]);
+
+  if (path === '/admin/login') return <AdminLogin />;
+  if (path === '/admin' || path === '/admin/') return <AdminFrame active="dashboard"><DashboardPage /></AdminFrame>;
+  if (path === '/admin/listings') return <AdminFrame active="listings"><AdminListingsPage /></AdminFrame>;
+  if (path === '/admin/listings/new') return <AdminFrame active="new"><ListingEditorPage /></AdminFrame>;
+  if (path.startsWith('/admin/listings/') && path.endsWith('/edit')) return <AdminFrame active="listings"><ListingEditorPage id={path.split('/')[3]} /></AdminFrame>;
+  if (path === '/collection') return <CollectionPage />;
+  if (path.startsWith('/collection/')) return <DetailPage slug={path.split('/')[2]} />;
+  if (path === '/about') return <AboutPage />;
+  return <HomePage />;
+}
 
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);

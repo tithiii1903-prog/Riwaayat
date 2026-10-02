@@ -62,6 +62,26 @@ async function readJson(filePath, fallback) {
     }
 }
 async function writeJson(filePath, value) { await fs.writeFile(filePath, JSON.stringify(value, null, 2)); }
+const sessionsPath = path.join(dataDir, 'sessions.json');
+async function loadSessions() {
+    const stored = await readJson(sessionsPath, {});
+    const currentTime = Date.now();
+    for (const [token, session] of Object.entries(stored)) {
+        if (session && session.expiresAt > currentTime) {
+            sessions.set(token, session);
+        }
+    }
+}
+async function persistSessions() {
+    const obj = {};
+    const currentTime = Date.now();
+    for (const [token, session] of sessions.entries()) {
+        if (session.expiresAt > currentTime) {
+            obj[token] = session;
+        }
+    }
+    await writeJson(sessionsPath, obj);
+}
 async function ensureStore() {
     await fs.mkdir(dataDir, { recursive: true });
     await fs.mkdir(uploadsDir, { recursive: true });
@@ -71,14 +91,26 @@ async function ensureStore() {
     catch {
         await writeJson(listingsPath, seedListings);
     }
-    try {
-        await fs.access(adminPath);
-    }
-    catch {
-        const password = process.env.RIWAAYAT_DEV_PASSWORD || 'Riwaayat!2026';
-        const record = { id: crypto.randomUUID(), username: process.env.RIWAAYAT_DEV_USERNAME || 'admin', passwordHash: await bcrypt.hash(password, 12), createdAt: now(), updatedAt: now() };
+    const envUsername = process.env.RIWAAYAT_ADMIN_USERNAME || process.env.RIWAAYAT_DEV_USERNAME;
+    const envPassword = process.env.RIWAAYAT_ADMIN_PASSWORD || process.env.RIWAAYAT_DEV_PASSWORD;
+    const existingAdmin = await getAdmin();
+    if (!existingAdmin) {
+        const username = (envUsername || 'admin').trim();
+        const password = envPassword || 'Riwaayat!2026';
+        const record = { id: crypto.randomUUID(), username, passwordHash: await bcrypt.hash(password, 12), createdAt: now(), updatedAt: now() };
         await writeJson(adminPath, record);
     }
+    else if (envUsername && envPassword) {
+        const isMatchingUser = existingAdmin.username === envUsername.trim();
+        const isMatchingPass = await bcrypt.compare(envPassword, existingAdmin.passwordHash);
+        if (!isMatchingUser || !isMatchingPass) {
+            existingAdmin.username = envUsername.trim();
+            existingAdmin.passwordHash = await bcrypt.hash(envPassword, 12);
+            existingAdmin.updatedAt = now();
+            await writeJson(adminPath, existingAdmin);
+        }
+    }
+    await loadSessions();
 }
 async function getListings() { return readJson(listingsPath, []); }
 async function saveListings(listings) { await writeJson(listingsPath, listings); }
@@ -87,8 +119,16 @@ const sessions = new Map();
 const cookieName = 'riwaayat_admin_session';
 const isPreviewOrProduction = Boolean(process.env.MANUS_PROJECT_ID) || process.env.NODE_ENV === 'production';
 const sessionCookieOptions = { httpOnly: true, sameSite: (isPreviewOrProduction ? 'none' : 'lax'), secure: isPreviewOrProduction, maxAge: 1000 * 60 * 60 * 8, path: '/' };
-const getSession = (req) => { const token = req.cookies?.[cookieName]; const session = token ? sessions.get(token) : undefined; if (!session || session.expiresAt < Date.now())
-    return null; return { token, ...session }; };
+const getSession = (req) => {
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : undefined;
+    const cookieToken = req.cookies?.[cookieName];
+    const token = bearerToken || cookieToken;
+    const session = token ? sessions.get(token) : undefined;
+    if (!session || session.expiresAt < Date.now())
+        return null;
+    return { token, ...session };
+};
 const requireAuth = (req, res, next) => { const session = getSession(req); if (!session)
     return res.status(401).json({ success: false, message: 'Authentication required' }); req.admin = session.username; next(); };
 const app = express();
@@ -101,7 +141,11 @@ const allowedOrigins = (process.env.FRONTEND_URL || '')
 app.use(cors({
     origin: (origin, callback) => {
         const cleanOrigin = origin ? origin.replace(/\/+$/, '') : '';
-        if (!origin || allowedOrigins.includes(cleanOrigin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+        if (!origin ||
+            allowedOrigins.includes(cleanOrigin) ||
+            /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin) ||
+            /\.vercel\.app$/i.test(origin) ||
+            /\.onrender\.com$/i.test(origin)) {
             return callback(null, true);
         }
         if (!isPreviewOrProduction && allowedOrigins.length === 0) {
@@ -110,6 +154,7 @@ app.use(cors({
         return callback(new Error('CORS origin is not allowed.'));
     },
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
@@ -177,11 +222,19 @@ app.post('/api/admin/login', rateLimitAuth, async (req, res) => {
         return res.status(401).json({ success: false, message: 'The Admin ID or password is incorrect.' });
     const token = crypto.randomBytes(32).toString('hex');
     sessions.set(token, { username, expiresAt: Date.now() + 1000 * 60 * 60 * 8 });
+    await persistSessions();
     res.cookie(cookieName, token, sessionCookieOptions);
-    res.json(envelope({ username }));
+    res.json(envelope({ username, token }));
 });
-app.post('/api/admin/logout', (req, res) => { const session = getSession(req); if (session?.token)
-    sessions.delete(session.token); res.clearCookie(cookieName, { ...sessionCookieOptions, maxAge: undefined }); res.json(envelope({ loggedOut: true })); });
+app.post('/api/admin/logout', async (req, res) => {
+    const session = getSession(req);
+    if (session?.token) {
+        sessions.delete(session.token);
+        await persistSessions();
+    }
+    res.clearCookie(cookieName, { ...sessionCookieOptions, maxAge: undefined });
+    res.json(envelope({ loggedOut: true }));
+});
 app.get('/api/admin/me', requireAuth, (req, res) => res.json(envelope({ username: req.admin })));
 app.get('/api/admin/dashboard', requireAuth, async (_req, res) => { const rows = await getListings(); res.json(envelope({ total: rows.length, available: rows.filter((l) => l.status === 'available').length, outOfStock: rows.filter((l) => l.status === 'out_of_stock').length, sold: rows.filter((l) => l.status === 'sold').length, recent: rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5) })); });
 app.get('/api/admin/listings', requireAuth, async (_req, res) => res.json(envelope(await getListings())));
